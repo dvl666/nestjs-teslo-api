@@ -1,10 +1,10 @@
-import { IsArray, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Min } from "class-validator"
+import { IsArray, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, MinLength } from "class-validator"
 
 
 export class CreateProductDto {
 
     @IsString()
-    @Min(1)
+    @MinLength(1)
     @IsNotEmpty()
     title: string
 
