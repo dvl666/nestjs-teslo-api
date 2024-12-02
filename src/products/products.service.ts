@@ -70,8 +70,20 @@ export class ProductsService {
 
   }
 
-  update(id: number, updateProductDto: UpdateProductDto) {
-    return `This action updates a #${id} product`;
+  async update(id: string, updateProductDto: UpdateProductDto) {
+    const product = await this.productRepository.preload({ // preload() es una función de TypeORM que carga los datos de la base de datos en la entidad
+      id: id,
+      ...updateProductDto
+    })
+
+    if ( !product ) throw new NotFoundException(`Product with id ${id} not found`);
+    
+    try {
+      this.productRepository.save( product ); // save() es una función de TypeORM que guarda los datos en la base de datos
+      return product;
+    } catch ( error ) {
+      this.handleDuplicateError(error)
+    }
   }
 
   async remove(id: string) {
