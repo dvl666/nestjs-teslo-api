@@ -1,4 +1,4 @@
-import { BeforeInsert, Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { BeforeInsert, BeforeUpdate, Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Product {
@@ -18,7 +18,7 @@ export class Product {
     })
     description: string
 
-    @Column('text', { unique: true })
+    @Column('text')
     slug: string
 
     @Column('int', { default: 0 })
@@ -30,10 +30,32 @@ export class Product {
     @Column('text')
     gender: string
 
+    @Column('text', {
+        array: true,
+        default: []
+    })
+    tags: string[]
+
     @BeforeInsert()
     checkSlugInsert() {
         if ( !this.slug ) this.slug = this.title;
         this.slug = this.slug.toLowerCase().split(' ').join('_');
+    }
+
+    @BeforeUpdate()
+    checkSlugUpdate() {
+        if ( this.slug ) this.slug = this.slug
+            .toLowerCase()
+            .split(' ')
+            .join('_')
+            .replaceAll("'", '');
+    }
+
+    @BeforeInsert()
+    @BeforeUpdate()
+    checkTagsInsert() {
+        // this.tags.forEach( (tag) => tag.toLowerCase() ); // forEach no retorna un array solo lo itera
+        this.tags = this.tags.map( (tag) => tag.toLowerCase() ); // map retorna un array modificado
     }
 
 }
