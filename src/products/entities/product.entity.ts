@@ -1,4 +1,5 @@
-import { BeforeInsert, BeforeUpdate, Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { BeforeInsert, BeforeUpdate, Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { ProductImage } from "./product-image.entity";
 
 @Entity()
 export class Product {
@@ -36,6 +37,13 @@ export class Product {
     })
     tags: string[]
 
+    @OneToMany(
+        () => ProductImage,
+        ( image ) => image.product,
+        { cascade: true }
+    )
+    images: ProductImage[]
+
     @BeforeInsert()
     checkSlugInsert() {
         if ( !this.slug ) this.slug = this.title;
@@ -52,10 +60,9 @@ export class Product {
     }
 
     @BeforeInsert()
-    @BeforeUpdate()
     checkTagsInsert() {
         // this.tags.forEach( (tag) => tag.toLowerCase() ); // forEach no retorna un array solo lo itera
-        this.tags = this.tags.map( (tag) => tag.toLowerCase() ); // map retorna un array modificado
+        if ( this.tags ) this.tags = this.tags.map( (tag) => tag.toLowerCase() ); // map retorna un array modificado
     }
 
 }
