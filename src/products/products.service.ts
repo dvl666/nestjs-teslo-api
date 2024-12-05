@@ -3,9 +3,10 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Product } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { PaginationDto } from 'src/common/dtos/pagination.dto';
 import { isUUID } from 'class-validator';
+import { ProductImage } from './entities/product-image.entity';
 
 @Injectable()
 export class ProductsService {
@@ -19,29 +20,46 @@ export class ProductsService {
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
 
+    @InjectRepository(ProductImage)
+    private productImageRepository: Repository<ProductImage>,
+
+    private readonly dataSource: DataSource // -> Inject the DataSource to create a QueryRunner
+
   ) {}
 
   async create(createProductDto: CreateProductDto) {
     
     try {
-      const product = this.productRepository.create(createProductDto);
+      const { images = [], ...restData } = createProductDto
+      const product = this.productRepository.create({
+        ...restData,
+        images: images.map( ( image ) => this.productImageRepository.create({ url: image }) )
+      });
       await this.productRepository.save( product );
     
-      return product;
+      return { ...product, images };
     } catch (error) { 
       this.handleDuplicateError(error) 
     };
 
   }
 
-  findAll(paginationDto: PaginationDto) {
+  async findAll(paginationDto: PaginationDto) {
     
     const { limit = 10, offset = 0 } = paginationDto;
 
-    return this.productRepository.find({
+    const products = await this.productRepository.find({
       take: limit, // take de toma
-      skip: offset // skip de salto
+      skip: offset, // skip de salto
+      relations: {
+        images: true
+      }
     });
+
+    return products.map( ( product ) => ({
+      ...product, // Este operador copia todas las propiedades del objeto product en el nuevo objeto.
+      images: product.images.map( ( image ) => image.url ) // Sobrescribe la propiedad images del producto.
+    }) );
 
   }
 
@@ -70,20 +88,59 @@ export class ProductsService {
 
   }
 
+  async findOnePlain(term: string) {
+
+    const { images = [], ...restOfProduct } = await this.findOne(term);
+    return {
+      ...restOfProduct,
+      images: images.map( ( (image) => image.url ) )
+    }
+
+  }
+
   async update(id: string, updateProductDto: UpdateProductDto) {
+
+    const { images = [], ...restProduct } = updateProductDto;
+
     const product = await this.productRepository.preload({ // preload() es una función de TypeORM que carga los datos de la base de datos en la entidad
       id: id,
-      ...updateProductDto
+      ...restProduct,
     })
 
     if ( !product ) throw new NotFoundException(`Product with id ${id} not found`);
-    
+
+    //Create Query Runner
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      this.productRepository.save( product ); // save() es una función de TypeORM que guarda los datos en la base de datos
-      return product;
+
+      if (images) {
+        await queryRunner.manager.delete( ProductImage, { product: { id } } )
+        product.images = images.map( ( image ) => this.productImageRepository.create({ url: image }) );
+      } else {
+        console.log('hola');
+      }
+      await queryRunner.manager.save( product );
+      
+      // this.productRepository.save( product ); // save() es una función de TypeORM que guarda los datos en la base de datos
+      
+      await queryRunner.commitTransaction();
+      await queryRunner.release();
+
+      return { 
+        ...product, 
+        images: product.images.map( ( image ) => image.url ) 
+      };
+
     } catch ( error ) {
+
+      await queryRunner.rollbackTransaction();
       this.handleDuplicateError(error)
+      
     }
+
   }
 
   async remove(id: string) {
@@ -98,6 +155,19 @@ export class ProductsService {
     if ( error.code === '23505' ) throw new BadRequestException(`error: ${error.detail}`);
     this.logger.error(error);
     throw new InternalServerErrorException('Error, please check the logs');
+
+  }
+
+  async deleteAllProducts() {
+
+    const query = this.productRepository.createQueryBuilder('product');
+
+    try {
+      await query.delete().where({}).execute();
+      return 'All products deleted';
+    } catch (error) {
+      this.handleDuplicateError(error)
+    }
 
   }
 
