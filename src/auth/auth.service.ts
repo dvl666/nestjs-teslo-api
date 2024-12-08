@@ -5,6 +5,8 @@ import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { LoginUserDto } from './dto/login-user.dto';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
@@ -12,7 +14,8 @@ export class AuthService {
   constructor(
     
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>
+    private readonly userRepository: Repository<User>,
+    private readonly jwtService: JwtService
     
   ) {}
 
@@ -22,7 +25,7 @@ export class AuthService {
     // Buscar usuario por email
     const user = await this.userRepository.findOne({
       where: { email },
-      select: ['email', 'password']
+      select: ['email', 'password', 'roles']
     });
 
     if ( !user ) throw new UnauthorizedException('Credenciales incorrectas');
@@ -31,7 +34,10 @@ export class AuthService {
     if( !bcrypt.compareSync( password, user.password ) ) throw new UnauthorizedException('Credenciales incorrectas');
     delete user.password; // No devolver la contraseña
    
-    return user;
+    return {
+      user,
+      token: this.getJwtToken( { email: user.email, role: user.roles } ) // -> crear token
+    };
   }
   
   async create(createUserDto: CreateUserDto) {
@@ -53,6 +59,13 @@ export class AuthService {
     } catch (error) {
       this.handleException(error);
     }
+
+  }
+
+  private getJwtToken(payload: JwtPayload) {
+
+    const token = this.jwtService.sign(payload);
+    return token;
 
   }
 
