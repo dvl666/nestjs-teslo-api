@@ -25,7 +25,7 @@ export class AuthService {
     // Buscar usuario por email
     const user = await this.userRepository.findOne({
       where: { email },
-      select: ['email', 'password', 'roles']
+      select: ['id', 'password']
     });
 
     if ( !user ) throw new UnauthorizedException('Credenciales incorrectas');
@@ -36,7 +36,7 @@ export class AuthService {
    
     return {
       user,
-      token: this.getJwtToken( { email: user.email, role: user.roles } ) // -> crear token
+      token: this.getJwtToken( { id: user.id } ) // -> crear token
     };
   }
   
@@ -49,7 +49,7 @@ export class AuthService {
       const user = this.userRepository.create( 
         { 
           ...userData, 
-          password: bcrypt.hashSync( password, 10 ) 
+          password: bcrypt.hashSync( password, 10 ) // -> Encriptar contraseña usando bcrypt
         }
       );
       await this.userRepository.save(user);
