@@ -11,7 +11,7 @@ https://github.com/dvl666/nestjs-teslo-api.git
 
 2. Ejecutar npm i
 ```
-docker-compose up
+npm i
 ```
 
 3. Tener Nest CLI instalado
