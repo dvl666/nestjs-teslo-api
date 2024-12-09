@@ -62,6 +62,23 @@ export class AuthService {
 
   }
 
+  async deleteAllUsers() {
+    const query = this.userRepository.createQueryBuilder('user');
+
+    try {
+      await query.delete().where({}).execute();
+      return 'All users deleted';
+    } catch (error) {
+      this.handleException(error);
+    }
+
+  }
+
+  async findUserByEmail(email: string) {
+    console.log(email);
+    return await this.userRepository.findOneBy({ email: email });
+  }
+
   private getJwtToken(payload: JwtPayload) {
 
     const token = this.jwtService.sign(payload);
