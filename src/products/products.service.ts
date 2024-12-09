@@ -7,6 +7,7 @@ import { DataSource, Repository } from 'typeorm';
 import { PaginationDto } from 'src/common/dtos/pagination.dto';
 import { isUUID } from 'class-validator';
 import { ProductImage } from './entities/product-image.entity';
+import { User } from 'src/auth/entities/user.entity';
 
 @Injectable()
 export class ProductsService {
@@ -27,14 +28,16 @@ export class ProductsService {
 
   ) {}
 
-  async create(createProductDto: CreateProductDto) {
+  async create(createProductDto: CreateProductDto, user: User) {
     
     try {
       const { images = [], ...restData } = createProductDto
       const product = this.productRepository.create({
         ...restData,
-        images: images.map( ( image ) => this.productImageRepository.create({ url: image }) )
+        images: images.map( ( image ) => this.productImageRepository.create({ url: image }) ),
+        user: user
       });
+      // console.log(product);
       await this.productRepository.save( product );
     
       return { ...product, images };
@@ -52,7 +55,8 @@ export class ProductsService {
       take: limit, // take de toma
       skip: offset, // skip de salto
       relations: {
-        images: true
+        images: true,
+        user: true
       }
     });
 
@@ -98,13 +102,14 @@ export class ProductsService {
 
   }
 
-  async update(id: string, updateProductDto: UpdateProductDto) {
+  async update(id: string, updateProductDto: UpdateProductDto, user: User) {
 
     const { images = [], ...restProduct } = updateProductDto;
 
     const product = await this.productRepository.preload({ // preload() es una función de TypeORM que carga los datos de la base de datos en la entidad
       id: id,
       ...restProduct,
+      user:  user
     })
 
     if ( !product ) throw new NotFoundException(`Product with id ${id} not found`);
