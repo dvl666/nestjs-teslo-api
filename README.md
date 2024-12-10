@@ -42,3 +42,9 @@ npm run start:dev
 ```
 http://localhost:3000/api/seed
 ```
+
+## Stack utilizado
+* TypeORM
+* Nestjs
+
+***Este repositorio contiene comentarios tanto de funcionamiento de TypeScript como de funcionalidades de NestJs, todo con el objetivo de su posterior entendimiento***
